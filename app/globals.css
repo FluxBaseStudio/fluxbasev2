@@ -2015,3 +2015,95 @@ body[data-theme="light"] .cookie-actions .secondary-button {
     right: 4px;
   }
 }
+
+
+/* =========================
+   V10 COOKIE POPUP FIX
+   Baner cookies zawsze na ekranie,
+   nie przy stopce strony.
+   ========================= */
+
+.cookie-modal,
+.cookie-banner {
+  position: fixed !important;
+  left: auto !important;
+  right: 24px !important;
+  bottom: 24px !important;
+  top: auto !important;
+  transform: none !important;
+  width: min(720px, calc(100vw - 32px)) !important;
+  max-height: calc(100vh - 48px) !important;
+  overflow: auto !important;
+  z-index: 2147482000 !important;
+  margin: 0 !important;
+}
+
+.cookie-modal {
+  color: #f7f8ff !important;
+  background:
+    linear-gradient(145deg, rgba(18, 24, 46, 0.98), rgba(7, 10, 24, 0.96)),
+    rgba(8, 11, 24, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 28px !important;
+  padding: 1.1rem !important;
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.48),
+    inset 2px 2px 0 -2px rgba(255, 255, 255, 0.7),
+    inset -2px -2px 0 -2px rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(18px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
+}
+
+.cookie-modal h2,
+.cookie-modal strong {
+  color: #ffffff !important;
+}
+
+.cookie-modal p,
+.cookie-modal small,
+.cookie-modal a {
+  color: rgba(247, 248, 255, 0.78) !important;
+}
+
+.cookie-types article {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.cookie-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 0.6rem !important;
+  flex-wrap: wrap !important;
+}
+
+.cookie-actions .secondary-button {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.cookie-actions .primary-button {
+  color: #ffffff !important;
+}
+
+@media (max-width: 760px) {
+  .cookie-modal,
+  .cookie-banner {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    width: auto !important;
+    max-height: calc(100vh - 24px) !important;
+  }
+
+  .cookie-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .cookie-actions .primary-button,
+  .cookie-actions .secondary-button {
+    width: 100% !important;
+  }
+}
