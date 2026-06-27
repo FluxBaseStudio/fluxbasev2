@@ -109,8 +109,6 @@ export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
   const [contactStatus, setContactStatus] = useState<ContactStatus>("idle");
   const [contactMessage, setContactMessage] = useState("");
-  const [newsletterStatus, setNewsletterStatus] = useState<ContactStatus>("idle");
-  const [newsletterMessage, setNewsletterMessage] = useState("");
   const [cookieConsent, setCookieConsent] = useState<CookieConsent>(null);
   const [contactForm, setContactForm] = useState({
     name: "",
@@ -118,17 +116,17 @@ export default function Home() {
     phone: "",
     message: ""
   });
-  const [newsletterForm, setNewsletterForm] = useState({
-    email: ""
-  });
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLElement | null>(null);
+  const signalRef = useRef<HTMLElement | null>(null);
+  const pointerFrameRef = useRef<number | null>(null);
+  const pointerTargetRef = useRef({ x: 0, y: 0 });
   const shouldReduceMotion = useReducedMotion();
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const rotateX = useTransform(mouseY, [-250, 250], [9, -9]);
-  const rotateY = useTransform(mouseX, [-250, 250], [-10, 10]);
+  const rotateX = useTransform(mouseY, [-250, 250], [4, -4]);
+  const rotateY = useTransform(mouseX, [-250, 250], [-5, 5]);
 
   const { scrollYProgress } = useScroll();
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 120, damping: 26, mass: 0.3 });
@@ -139,6 +137,14 @@ export default function Home() {
   });
   const heroY = useTransform(heroProgress, [0, 1], [0, shouldReduceMotion ? 0 : 120]);
   const heroOpacity = useTransform(heroProgress, [0, 0.75], [1, 0.25]);
+
+  const { scrollYProgress: signalProgress } = useScroll({
+    target: signalRef,
+    offset: ["start end", "end start"]
+  });
+  const signalY = useTransform(signalProgress, [0, 1], [shouldReduceMotion ? 0 : 100, shouldReduceMotion ? 0 : -120]);
+  const signalRotateX = useTransform(signalProgress, [0, 1], [shouldReduceMotion ? 0 : 18, shouldReduceMotion ? 0 : -14]);
+  const signalRotateZ = useTransform(signalProgress, [0, 1], [shouldReduceMotion ? 0 : -7, shouldReduceMotion ? 0 : 7]);
 
   const filteredProjects = useMemo(() => projects.filter((project) => project.featured), [projects]);
 
@@ -154,6 +160,14 @@ export default function Home() {
   useEffect(() => {
     document.body.removeAttribute("data-theme");
     window.localStorage.removeItem("fluxbase-theme-v6");
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pointerFrameRef.current !== null) {
+        window.cancelAnimationFrame(pointerFrameRef.current);
+      }
+    };
   }, []);
 
 
@@ -224,8 +238,18 @@ export default function Home() {
     if (shouldReduceMotion) return;
 
     const rect = event.currentTarget.getBoundingClientRect();
-    mouseX.set(event.clientX - rect.left - rect.width / 2);
-    mouseY.set(event.clientY - rect.top - rect.height / 2);
+    pointerTargetRef.current = {
+      x: event.clientX - rect.left - rect.width / 2,
+      y: event.clientY - rect.top - rect.height / 2
+    };
+
+    if (pointerFrameRef.current !== null) return;
+
+    pointerFrameRef.current = window.requestAnimationFrame(() => {
+      mouseX.set(pointerTargetRef.current.x);
+      mouseY.set(pointerTargetRef.current.y);
+      pointerFrameRef.current = null;
+    });
   }
 
   function scrollPortfolio(direction: "left" | "right") {
@@ -243,10 +267,6 @@ export default function Home() {
       ...currentForm,
       [name]: value
     }));
-  }
-
-  function handleNewsletterChange(event: ChangeEvent<HTMLInputElement>) {
-    setNewsletterForm({ email: event.target.value });
   }
 
   async function handleContactSubmit(event: FormEvent<HTMLFormElement>) {
@@ -281,41 +301,17 @@ export default function Home() {
     }
   }
 
-  async function handleNewsletterSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (newsletterStatus === "sending") return;
-
-    setNewsletterStatus("sending");
-    setNewsletterMessage("Zapisujemy adres...");
-
-    try {
-      const response = await fetch("/api/newsletter", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(newsletterForm)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || "Nie udało się zapisać do newslettera.");
-      }
-
-      setNewsletterStatus("success");
-      setNewsletterMessage("Dzięki! Adres został zapisany do newslettera.");
-      setNewsletterForm({ email: "" });
-    } catch (error) {
-      setNewsletterStatus("error");
-      setNewsletterMessage(error instanceof Error ? error.message : "Coś poszło nie tak. Spróbuj ponownie.");
-    }
-  }
-
   return (
     <main className="site-shell" id="start">
+      <svg className="glass-filter-svg" aria-hidden="true" focusable="false">
+        <filter id="container-glass" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="8" result="noise" />
+          <feGaussianBlur in="noise" stdDeviation="1.8" result="softNoise" />
+          <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="18" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
       <motion.div className="scroll-progress" style={{ scaleX: smoothProgress }} />
+      <div className="scroll-orbital-bg" />
       <div className="noise-layer" />
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
@@ -386,10 +382,14 @@ export default function Home() {
         <motion.div
           className="hero-visual"
           style={shouldReduceMotion ? undefined : { rotateX, rotateY }}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
         >
+          <div className="hero-depth-grid" />
+          <div className="holo-ring holo-ring-one" />
+          <div className="holo-ring holo-ring-two" />
+          <div className="liquid-sheet liquid-sheet-one" />
           <div className="orbit orbit-one" />
           <div className="orbit orbit-two" />
           <div className="floating-rock rock-one" />
@@ -403,6 +403,11 @@ export default function Home() {
             <span>Performance</span>
             <strong>98</strong>
             <small>Core Web Vitals ready</small>
+          </div>
+          <div className="glass-card stack-card">
+            <span>Stack</span>
+            <strong>Next.js</strong>
+            <small>UX / UI / SEO</small>
           </div>
         </motion.div>
 
@@ -439,6 +444,20 @@ export default function Home() {
         </motion.div>
       </section>
 
+      <section className="signal-section section-pad" ref={signalRef} aria-hidden="true">
+        <motion.div className="signal-stage" style={shouldReduceMotion ? undefined : { y: signalY, rotateX: signalRotateX, rotateZ: signalRotateZ }}>
+          <div className="signal-floor" />
+          <div className="signal-column signal-column-one" />
+          <div className="signal-column signal-column-two" />
+          <div className="signal-column signal-column-three" />
+          <div className="signal-plane signal-plane-one" />
+          <div className="signal-plane signal-plane-two" />
+          <div className="signal-plane signal-plane-three" />
+          <div className="signal-beam signal-beam-one" />
+          <div className="signal-beam signal-beam-two" />
+        </motion.div>
+      </section>
+
       <section className="services-section section-pad" id="services">
         <motion.div className="section-heading" initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-120px" }} variants={reveal} transition={{ duration: 0.7 }}>
           <span className="section-eyebrow">Usługi</span>
@@ -455,6 +474,7 @@ export default function Home() {
               whileInView="visible"
               viewport={{ once: true, margin: "-100px" }}
               variants={reveal}
+              whileHover={shouldReduceMotion ? undefined : { y: -12, rotateX: 6, rotateY: index % 2 === 0 ? -4 : 4, scale: 1.02 }}
               transition={{ duration: 0.6, delay: index * 0.05 }}
             >
               <span>{service.eyebrow}</span>
@@ -492,6 +512,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: 40, rotateX: -8 }}
                   whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
                   viewport={{ once: true, margin: "-100px" }}
+                  whileHover={shouldReduceMotion ? undefined : { y: -12, rotateX: 4, rotateY: index % 2 === 0 ? -3 : 3 }}
                   transition={{ duration: 0.7, delay: index * 0.06 }}
                 >
                   <div className="portfolio-image-wrap">
@@ -547,6 +568,7 @@ export default function Home() {
               whileInView="visible"
               viewport={{ once: true, margin: "-120px" }}
               variants={reveal}
+              whileHover={shouldReduceMotion ? undefined : { y: -10, rotateX: 5, scale: 1.02 }}
               transition={{ duration: 0.65 }}
             >
               <div className="process-icon">{step.icon}</div>
@@ -570,35 +592,18 @@ export default function Home() {
 
           <div className="reasons-list">
             {reasons.map((reason, index) => (
-              <motion.div className="reason-item liquid-panel" key={reason} variants={reveal} transition={{ duration: 0.6, delay: index * 0.06 }}>
+              <motion.div
+                className="reason-item liquid-panel"
+                key={reason}
+                variants={reveal}
+                whileHover={shouldReduceMotion ? undefined : { x: 8, rotateY: -3 }}
+                transition={{ duration: 0.6, delay: index * 0.06 }}
+              >
                 <span>✦</span>
                 <p>{reason}</p>
               </motion.div>
             ))}
           </div>
-        </motion.div>
-      </section>
-
-      <section className="newsletter-section section-pad">
-        <motion.div className="newsletter-card liquid-panel" initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-120px" }} variants={reveal} transition={{ duration: 0.7 }}>
-          <div>
-            <span className="section-eyebrow">Newsletter</span>
-            <h2>Zapisz się po aktualności FluxBase.</h2>
-            <p>Newsletter to dobrowolna lista e-mailowa. Możesz wysyłać tam nowości, informacje o usługach, poradniki i aktualizacje projektowe.</p>
-          </div>
-
-          <form className="newsletter-form" onSubmit={handleNewsletterSubmit}>
-            <label>
-              E-mail
-              <input name="email" type="email" value={newsletterForm.email} onChange={handleNewsletterChange} placeholder="twoj@email.pl" required />
-            </label>
-
-            <button className="primary-button" type="submit" disabled={newsletterStatus === "sending"}>
-              {newsletterStatus === "sending" ? "Zapisywanie..." : "Zapisz mnie"}
-            </button>
-
-            {newsletterMessage && <p className={`form-status ${newsletterStatus}`} aria-live="polite">{newsletterMessage}</p>}
-          </form>
         </motion.div>
       </section>
 
